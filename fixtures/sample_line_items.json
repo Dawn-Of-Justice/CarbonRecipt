@@ -1,0 +1,76 @@
+{
+  "_comment": "Expected parsed LineItem[] for fixtures/receipt_bigbazaar.png. Matches docs/API_CONTRACT.md LineItem shape. Feed the `items` array directly to POST /footprint as {\"items\": [...]} for a parser-free test.",
+  "merchant": "Big Bazaar",
+  "items": [
+    {
+      "name": "Amul Toned Milk",
+      "rawText": "AMUL TONED MILK 1L",
+      "category": "dairy",
+      "quantity": 2,
+      "unit": "l"
+    },
+    {
+      "name": "Aashirvaad Atta",
+      "rawText": "AASHIRVAAD ATTA 5KG",
+      "category": "grains",
+      "quantity": 5,
+      "unit": "kg"
+    },
+    {
+      "name": "Broiler Chicken",
+      "rawText": "BROILER CHICKEN 1KG",
+      "category": "meat",
+      "quantity": 1,
+      "unit": "kg"
+    },
+    {
+      "name": "Tata Salt",
+      "rawText": "TATA SALT 1KG",
+      "category": "other",
+      "quantity": 1,
+      "unit": "kg"
+    },
+    {
+      "name": "Britannia Biscuits",
+      "rawText": "BRITANNIA BISCUITS 250G",
+      "category": "packaged",
+      "quantity": 2,
+      "unit": "pack"
+    },
+    {
+      "name": "Onion",
+      "rawText": "ONION 2KG",
+      "category": "produce",
+      "quantity": 2,
+      "unit": "kg"
+    },
+    {
+      "name": "Potato",
+      "rawText": "POTATO 1KG",
+      "category": "produce",
+      "quantity": 1,
+      "unit": "kg"
+    },
+    {
+      "name": "Fortune Sunflower Oil",
+      "rawText": "FORTUNE SUNFLOWER OIL 1L",
+      "category": "packaged",
+      "quantity": 1,
+      "unit": "l"
+    },
+    {
+      "name": "Amul Butter",
+      "rawText": "AMUL BUTTER 100G",
+      "category": "dairy",
+      "quantity": 0.1,
+      "unit": "kg"
+    },
+    {
+      "name": "Toor Dal",
+      "rawText": "TOOR DAL 1KG",
+      "category": "grains",
+      "quantity": 1,
+      "unit": "kg"
+    }
+  ]
+}
