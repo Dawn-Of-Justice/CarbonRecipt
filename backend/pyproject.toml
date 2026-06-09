@@ -1,0 +1,61 @@
+# Tooling config for the Carbon Receipt backend.
+# Dependencies live in requirements.txt / requirements-dev.txt; this file only
+# configures ruff, mypy, and pytest (it does not declare the package as installable).
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["app", "tests"]
+extend-exclude = ["venv", ".venv"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle+pyflakes, I: import order, B: bugbear, C4: comprehensions,
+# SIM: simplify, S: bandit security, RUF: ruff-specific.
+select = ["E", "F", "I", "B", "C4", "SIM", "S", "RUF"]
+ignore = [
+    # The engine and network tiers intentionally swallow errors to degrade
+    # gracefully (the app must never break the pipeline on a tier miss). These
+    # are deliberate, documented design choices, not bugs.
+    "S110",   # try-except-pass — intentional tier fallthrough
+    "SIM105", # suggests contextlib.suppress; explicit try/except reads clearer here
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]               # asserts are the point of tests
+"app/gemini/client.py" = ["E501"]   # long lines are LLM prompt text, not code
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom puts Depends()/Query()/File()/Form() in
+# argument defaults by design; B008 is a false positive for these.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.File",
+    "fastapi.Form",
+    "fastapi.Path",
+    "fastapi.Header",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["pydantic.mypy"]
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+# google-genai / google-cloud-firestore / httpx internals ship partial stubs;
+# don't fail the build on third-party typing gaps.
+ignore_missing_imports = true
+exclude = ["venv", "tests"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = ["ignore::DeprecationWarning"]

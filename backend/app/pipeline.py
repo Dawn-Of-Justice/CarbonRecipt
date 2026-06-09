@@ -4,6 +4,7 @@ Builds a full Receipt (id, totals, breakdown, equivalence, swaps) from raw
 line items, using a CarbonEngine. Kept separate so both the upload router and
 the demo seeder share one code path.
 """
+
 from __future__ import annotations
 
 import uuid

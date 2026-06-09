@@ -81,11 +81,37 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        "slide-up-fade": {
+          "0%": { opacity: "0", transform: "translateY(6px) scale(0.98)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "draw-underline": {
+          "0%": { strokeDashoffset: "240" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        sheen: {
+          "0%": { transform: "translateX(-120%)" },
+          "60%, 100%": { transform: "translateX(220%)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both",
         "fade-in": "fade-in 0.5s ease-out both",
         shimmer: "shimmer 1.6s infinite",
+        "slide-up-fade":
+          "slide-up-fade 0.32s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "draw-underline":
+          "draw-underline 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.35s both",
+        sheen: "sheen 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.6s",
+        float: "float 6s ease-in-out infinite",
+      },
+      transitionTimingFunction: {
+        "out-quint": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "out-expo": "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

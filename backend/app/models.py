@@ -4,6 +4,7 @@ Field names and structures here are the contract. Frontend and tests build
 against these exact shapes, so do not rename a field without updating the
 contract doc.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Literal, Optional

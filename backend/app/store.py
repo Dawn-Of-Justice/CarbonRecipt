@@ -7,13 +7,14 @@ demo). Set USE_FIRESTORE=true to persist to google-cloud-firestore instead.
 The implicit single demo user is "demo-user"; a userId may be passed but
 defaults to that.
 """
+
 from __future__ import annotations
 
 import os
 import threading
 from typing import Dict, List, Optional
 
-from app.models import Budget, Receipt
+from app.models import Receipt
 
 DEFAULT_USER = "demo-user"
 DEFAULT_MONTHLY_TARGET_KG = 120.0
@@ -91,8 +92,8 @@ class InMemoryRepository(Repository):
 class FirestoreRepository(Repository):
     """Firestore-backed store. Collections:
 
-        users/{user}/receipts/{id}   -> receipt doc
-        users/{user}                 -> { monthlyTargetKg }
+    users/{user}/receipts/{id}   -> receipt doc
+    users/{user}                 -> { monthlyTargetKg }
     """
 
     def __init__(self) -> None:

@@ -12,7 +12,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <LandingNav />
-      <main>
+      <main id="main">
         <Hero />
         <HowItWorks />
         <Features />

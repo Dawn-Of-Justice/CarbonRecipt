@@ -1,4 +1,5 @@
 """Budget endpoints: GET /budget and PUT /budget."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
@@ -27,6 +28,4 @@ def update_budget(
     repo: Repository = Depends(get_repo),
 ) -> Budget:
     repo.set_budget_target(body.monthlyTargetKg, userId)
-    return insights_mod.compute_budget(
-        repo.list_receipts(userId), body.monthlyTargetKg
-    )
+    return insights_mod.compute_budget(repo.list_receipts(userId), body.monthlyTargetKg)

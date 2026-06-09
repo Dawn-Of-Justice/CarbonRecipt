@@ -9,6 +9,7 @@ All functions degrade gracefully: on any error / missing credentials they
 return a safe fallback (empty parse, None estimate, or an apologetic coach
 answer) so the rest of the pipeline keeps working.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,7 @@ from typing import List, Optional
 
 from app.models import LineItem
 
-PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "gen-ai-academy-491804")
+PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "promptwars-495213")
 LOCATION = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -108,7 +109,7 @@ def _coerce_line_items(raw) -> List[LineItem]:
             LineItem(
                 name=name,
                 rawText=str(entry.get("rawText") or name),
-                category=category,  # type: ignore[arg-type]
+                category=category,
                 quantity=quantity,
                 unit=unit,
             )

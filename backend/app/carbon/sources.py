@@ -5,6 +5,7 @@ Each function returns an `ItemFootprint` on success or `None` to fall through
 to the next tier. They never raise to the caller for normal "miss"/timeout
 cases — the engine also guards with try/except, but we keep these polite.
 """
+
 from __future__ import annotations
 
 import os
@@ -12,14 +13,12 @@ from typing import Optional
 
 import httpx
 
-from app.models import ItemFootprint, LineItem
 from app.carbon.engine import quantity_to_kg  # safe: no circular use at import time
+from app.models import ItemFootprint, LineItem
 
 OFF_SEARCH_URL = "https://world.openfoodfacts.org/api/v2/search"
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}"
-OFF_FIELDS = (
-    "product_name,ecoscore_grade,carbon-footprint_100g,nutriments"
-)
+OFF_FIELDS = "product_name,ecoscore_grade,carbon-footprint_100g,nutriments"
 CLIMATIQ_URL = "https://api.climatiq.io/data/v1/estimate"
 HTTP_TIMEOUT = 6.0
 
@@ -37,7 +36,7 @@ def _carbon_per_100g(product: dict) -> Optional[float]:
     if not isinstance(product, dict):
         return None
     direct = product.get("carbon-footprint_100g")
-    if direct not in (None, "", 0):
+    if direct is not None and direct not in ("", 0):
         try:
             return float(direct)
         except (TypeError, ValueError):
@@ -48,7 +47,7 @@ def _carbon_per_100g(product: dict) -> Optional[float]:
         "carbon-footprint-from-known-ingredients_100g",
     ):
         val = nutr.get(key)
-        if val not in (None, "", 0):
+        if val is not None and val not in ("", 0):
             try:
                 return float(val)
             except (TypeError, ValueError):
@@ -80,7 +79,7 @@ def _footprint_from_off(item: LineItem, product: dict) -> Optional[ItemFootprint
 # --- tier 1: Open Food Facts ----------------------------------------------
 def off_lookup(item: LineItem) -> Optional[ItemFootprint]:
     """Search OFF by product name; return a footprint if a carbon number exists."""
-    params = {
+    params: dict[str, str | int] = {
         "search_terms": item.name,
         "fields": OFF_FIELDS,
         "page_size": 1,

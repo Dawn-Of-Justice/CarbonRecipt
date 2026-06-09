@@ -4,9 +4,10 @@ Returns an ItemFootprint. Falls back to the static factor if OFF has the
 product but no carbon number, and to a plain static estimate if OFF is
 unreachable, so the demo never errors out.
 """
+
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from app.carbon.engine import _static_footprint
 from app.carbon.sources import off_barcode_lookup

@@ -121,10 +121,13 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-secondary/30">
       <DashboardHeader uploading={uploading} onUpload={handleUpload} />
 
-      <main className="container py-8">
+      <main id="main" className="container py-8">
         {offline && <OfflineNotice onRetry={load} />}
         {uploadError && (
-          <div className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <div
+            role="alert"
+            className="mb-6 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive"
+          >
             {uploadError}
           </div>
         )}
@@ -134,7 +137,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
             {/* MAIN COLUMN — selected receipt */}
-            <div className="space-y-6">
+            <div className="space-y-6 [&>*]:animate-fade-up">
               {selected ? (
                 <ReceiptDetail receipt={selected} />
               ) : (
@@ -144,15 +147,29 @@ export default function DashboardPage() {
 
             {/* SIDE COLUMN — track + reduce + coach */}
             <div className="space-y-6">
-              {budget && <BudgetCard budget={budget} onSet={setBudget} />}
-              {baseline && <BaselineCard baseline={baseline} />}
-              <TrendsCard trends={trends} />
-              <CoachCard />
-              <HistoryCard
-                receipts={receipts}
-                selectedId={selected?.id ?? null}
-                onSelect={setSelectedId}
-              />
+              {budget && (
+                <div className="animate-fade-up [animation-delay:60ms]">
+                  <BudgetCard budget={budget} onSet={setBudget} />
+                </div>
+              )}
+              {baseline && (
+                <div className="animate-fade-up [animation-delay:120ms]">
+                  <BaselineCard baseline={baseline} />
+                </div>
+              )}
+              <div className="animate-fade-up [animation-delay:180ms]">
+                <TrendsCard trends={trends} />
+              </div>
+              <div className="animate-fade-up [animation-delay:240ms]">
+                <CoachCard />
+              </div>
+              <div className="animate-fade-up [animation-delay:300ms]">
+                <HistoryCard
+                  receipts={receipts}
+                  selectedId={selected?.id ?? null}
+                  onSelect={setSelectedId}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -190,20 +207,26 @@ function DashboardHeader({
             type="file"
             accept="image/*"
             className="hidden"
+            aria-label="Upload a receipt image"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onUpload(f);
               e.target.value = "";
             }}
           />
-          <Button onClick={() => inputRef.current?.click()} disabled={uploading}>
+          <Button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="group"
+          >
             {uploading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" /> Reading receipt…
               </>
             ) : (
               <>
-                <Upload className="h-4 w-4" /> Upload receipt
+                <Upload className="h-4 w-4 transition-transform duration-300 ease-out-quint group-hover:-translate-y-0.5" />{" "}
+                Upload receipt
               </>
             )}
           </Button>
@@ -267,7 +290,16 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 sm:grid-cols-[200px_1fr] sm:items-center">
-            <div className="relative h-[200px]">
+            <div
+              className="relative h-[200px]"
+              role="img"
+              aria-label={
+                "Category breakdown: " +
+                breakdown
+                  .map((d) => `${d.name} ${d.value.toFixed(1)} kg`)
+                  .join(", ")
+              }
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -323,21 +355,38 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
           {/* Item table */}
           <div className="mt-6 overflow-hidden rounded-xl border border-border">
             <table className="w-full text-sm">
+              <caption className="sr-only">
+                Line items in this receipt with their Eco-Score, data source, and
+                CO₂e in kilograms, sorted highest first.
+              </caption>
               <thead className="bg-secondary/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Item</th>
-                  <th className="px-2 py-2.5 text-center font-medium">Eco</th>
-                  <th className="hidden px-2 py-2.5 font-medium sm:table-cell">
+                  <th scope="col" className="px-4 py-2.5 font-medium">
+                    Item
+                  </th>
+                  <th scope="col" className="px-2 py-2.5 text-center font-medium">
+                    Eco
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-2 py-2.5 font-medium sm:table-cell"
+                  >
                     Source
                   </th>
-                  <th className="px-4 py-2.5 text-right font-medium">CO₂e</th>
+                  <th scope="col" className="px-4 py-2.5 text-right font-medium">
+                    CO₂e
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {[...receipt.items]
                   .sort((a, b) => b.co2eKg - a.co2eKg)
                   .map((it, i) => (
-                    <tr key={`${it.name}-${i}`} className="hover:bg-secondary/30">
+                    <tr
+                      key={`${it.name}-${i}`}
+                      className="animate-slide-up-fade transition-colors hover:bg-secondary/30"
+                      style={{ animationDelay: `${Math.min(i, 10) * 45}ms` }}
+                    >
                       <td className="px-4 py-2.5">
                         <div className="font-medium text-foreground">
                           {it.name}
@@ -379,10 +428,11 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
-            {receipt.topSwaps.map((s) => (
+            {receipt.topSwaps.map((s, i) => (
               <div
                 key={s.fromItem}
-                className="rounded-xl border border-border bg-card p-4"
+                className="group animate-slide-up-fade rounded-xl border border-border bg-card p-4 transition-[transform,box-shadow,border-color] duration-300 ease-out-quint hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
+                style={{ animationDelay: `${i * 80}ms` }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-foreground line-through decoration-destructive/50">
@@ -395,7 +445,7 @@ function ReceiptDetail({ receipt }: { receipt: Receipt }) {
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                   {s.rationale}
                 </p>
-                <p className="mt-3 inline-flex rounded-full bg-leaf-100 px-2.5 py-1 text-xs font-semibold text-leaf-800">
+                <p className="mt-3 inline-flex rounded-full bg-leaf-100 px-2.5 py-1 text-xs font-semibold text-leaf-800 transition-colors group-hover:bg-leaf-200">
                   saves {s.co2eSavedKg.toFixed(1)} kg CO₂e
                 </p>
               </div>
@@ -417,12 +467,20 @@ function BudgetCard({
 }) {
   const [target, setTarget] = useState(String(budget.monthlyTargetKg));
   const [saving, setSaving] = useState(false);
+  const [fill, setFill] = useState(0);
+  const pct = Math.min(100, budget.percentUsed);
   const barColor =
     budget.status === "over"
       ? "bg-destructive"
       : budget.status === "warning"
         ? "bg-orange-500"
         : "bg-primary";
+
+  // Grow the bar from 0 to its value on mount / when the value changes.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setFill(pct));
+    return () => cancelAnimationFrame(id);
+  }, [pct]);
 
   async function save() {
     const n = Number(target);
@@ -454,11 +512,26 @@ function BudgetCard({
               / {formatNumber(budget.monthlyTargetKg, 0)} kg
             </span>
           </div>
-          <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-muted"
+            role="progressbar"
+            aria-valuenow={Math.round(budget.percentUsed)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`Monthly carbon budget: ${budget.percentUsed.toFixed(0)}% used, status ${budget.status}`}
+          >
             <div
-              className={cn("h-full rounded-full transition-all", barColor)}
-              style={{ width: `${Math.min(100, budget.percentUsed)}%` }}
-            />
+              className={cn(
+                "relative h-full overflow-hidden rounded-full transition-[width] duration-[900ms] ease-out-quint motion-reduce:transition-none",
+                barColor
+              )}
+              style={{ width: `${fill}%` }}
+            >
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-white/40 blur-[2px] animate-sheen motion-reduce:hidden"
+              />
+            </div>
           </div>
           <p
             className={cn(
@@ -537,7 +610,19 @@ function TrendsCard({ trends }: { trends: TrendPoint[] }) {
             Upload a few receipts to see your trend.
           </p>
         ) : (
-          <div className="h-[160px]">
+          <div
+            className="h-[160px]"
+            role="img"
+            aria-label={
+              "Footprint trend over " +
+              trends.length +
+              " periods, from " +
+              (trends[0]?.co2eKg.toFixed(1) ?? "0") +
+              " to " +
+              (trends[trends.length - 1]?.co2eKg.toFixed(1) ?? "0") +
+              " kg CO₂e."
+            }
+          >
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={trends}
@@ -622,12 +707,16 @@ function CoachCard() {
             Try: “Why is my footprint high this week?”
           </button>
         ) : (
-          <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
+          <div
+            className="max-h-56 space-y-2 overflow-y-auto pr-1"
+            aria-live="polite"
+            aria-busy={busy}
+          >
             {thread.map((m, i) => (
               <div
                 key={i}
                 className={cn(
-                  "rounded-xl px-3 py-2 text-sm",
+                  "animate-slide-up-fade rounded-xl px-3 py-2 text-sm",
                   m.role === "you"
                     ? "ml-6 bg-primary text-primary-foreground"
                     : "mr-6 bg-secondary text-foreground"
@@ -637,8 +726,9 @@ function CoachCard() {
               </div>
             ))}
             {busy && (
-              <div className="mr-6 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> thinking…
+              <div className="mr-6 flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-muted-foreground animate-slide-up-fade">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <TypingDots />
               </div>
             )}
           </div>
@@ -737,7 +827,7 @@ function EmptyState({
   return (
     <Card>
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-leaf-100 text-leaf-700">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-leaf-100 text-leaf-700 animate-float motion-reduce:animate-none">
           <Upload className="h-7 w-7" />
         </div>
         <h2 className="mt-5 font-display text-xl font-semibold">
@@ -752,6 +842,7 @@ function EmptyState({
           type="file"
           accept="image/*"
           className="hidden"
+          aria-label="Choose a receipt image to upload"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) onUpload(f);
@@ -775,7 +866,10 @@ function EmptyState({
 
 function OfflineNotice({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    <div
+      role="alert"
+      className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+    >
       <span>
         Can&apos;t reach the backend. Start it on{" "}
         <code className="rounded bg-amber-100 px-1">http://localhost:8000</code>.
@@ -800,6 +894,20 @@ function DashboardSkeleton() {
         <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
     </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1" aria-label="thinking">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-current opacity-60 motion-safe:animate-bounce"
+          style={{ animationDelay: `${i * 140}ms`, animationDuration: "1s" }}
+        />
+      ))}
+    </span>
   );
 }
 

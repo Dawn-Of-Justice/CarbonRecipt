@@ -6,6 +6,7 @@ GET  /receipts/{id}       single
 DELETE /receipts/{id}     remove
 POST /receipts/parse-only multipart image -> LineItem[] (no storage)
 """
+
 from __future__ import annotations
 
 from typing import List, Optional
@@ -18,6 +19,7 @@ from app.gemini.client import parse_receipt
 from app.models import ParseOnlyResponse, Receipt
 from app.pipeline import build_receipt
 from app.store import DEFAULT_USER, Repository
+from app.uploads import read_image_upload
 
 router = APIRouter(prefix="/receipts")
 
@@ -35,7 +37,7 @@ async def create_receipt(
     repo: Repository = Depends(get_repo),
 ) -> Receipt:
     """Full pipeline: vision parse the receipt image, score it, store it."""
-    image_bytes = await file.read()
+    image_bytes = await read_image_upload(file)
     items = parse_receipt(image_bytes, _guess_mime(file))
     if not items:
         raise HTTPException(
@@ -84,6 +86,6 @@ async def parse_only(
     merchant: Optional[str] = Form(None),
 ) -> ParseOnlyResponse:
     """Vision-parse the image to LineItem[] without scoring or storing."""
-    image_bytes = await file.read()
+    image_bytes = await read_image_upload(file)
     items = parse_receipt(image_bytes, _guess_mime(file))
     return ParseOnlyResponse(items=items, merchant=merchant)

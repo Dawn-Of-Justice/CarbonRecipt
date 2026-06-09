@@ -1,36 +1,80 @@
+<div align="center">
+
 # 🌱 Carbon Receipt
 
-**Turn everyday shopping receipts into a real carbon footprint — then understand, track, and reduce it.**
+**Turn an everyday shopping receipt into a real carbon footprint — then understand, track, and reduce it.**
 
-Built for the **PromptWars Virtual** hackathon (theme: *help individuals understand, track,
-and reduce their carbon footprint through simple actions and personalized insights*).
+Built for the **PromptWars Virtual** hackathon · *"Help individuals understand, track, and reduce their carbon footprint through simple actions and personalized insights."*
 
-Snap a grocery receipt → Gemini reads every line → a tiered engine resolves a **real CO₂e
-number** per item → see a tangible breakdown, track it against a budget, and get the
-personalized swaps that cut the most carbon, with a Gemini coach to explain it all.
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Gemini](https://img.shields.io/badge/Gemini-Vertex%20AI-4285F4?logo=google&logoColor=white)](https://cloud.google.com/vertex-ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](#-license)
 
-## Architecture
+</div>
+
+---
+
+## The idea
+
+Most carbon trackers ask you to log activities by hand, or give you vague averages. **Carbon Receipt skips the busywork:** you snap a grocery receipt, Gemini reads every line, and a tiered lookup engine resolves a **real CO₂e number** for each item — sourced from actual emissions databases, not a black box. You get a tangible breakdown, track it against a personal budget, and see the swaps that cut the most carbon, with a Gemini coach to explain it all in plain language.
+
+The app hits all three theme verbs explicitly:
+
+| Verb | How |
+|------|-----|
+| **Understand** | Every footprint is translated into something tangible — *"= X km driven / Y phone charges / Z trees needed for a year."* Each line item is tagged with its data **source** + **confidence** so the number is trustworthy, not magic. |
+| **Track** | Saved receipt history, weekly/monthly trend chart, per-category breakdown, and a baseline comparison vs. an average household basket. |
+| **Reduce** | Top-3 emitters each paired with a concrete lower-carbon swap and the kg CO₂e it saves, plus a monthly **carbon budget** with a live progress bar. |
+
+## Screenshots
+
+| Landing | Dashboard |
+|---------|-----------|
+| ![Landing page](docs/screenshots/landing.png) | ![Dashboard](docs/screenshots/dashboard.png) |
+
+## How it works
 
 ```
-                ┌─────────────────────────── Frontend (Next.js + shadcn/ui, :3000) ──────────────────────────┐
-   Receipt  →   │  Landing page  ·  Dashboard: upload → footprint → equivalences → breakdown                  │
-   photo        │  → Eco-Score & source badges → trend chart → carbon budget → top-3 swaps → coach chat        │
-                └───────────────────────────────────────────┬──────────────────────────────────────────────────┘
-                                                             │ REST (API_CONTRACT.md)
-                ┌────────────────────────────────────────────▼─────────────────────────── Backend (FastAPI, :8000) ┐
-                │  POST /receipts → Gemini (Vertex AI) vision parse → Carbon engine → store → insights/budget/coach │
-                │                                                                                                   │
-                │  Carbon engine (tiered, every line tagged source + confidence):                                  │
-                │    1) Open Food Facts (real per-product) → 2) Climatiq → 3) Static DEFRA/Agribalyse → 4) Gemini   │
-                └───────────────────────────────────────────────────────────────────────────────────────────────┘
+Receipt photo
+  → Gemini (Vertex AI, multimodal)  ── extract line items as JSON {name, category, quantity, unit}
+  → Carbon lookup engine (tiered)   ── resolve real CO₂e per item, tag source + confidence
+  → Aggregate                       ── total CO₂e, per-category breakdown, history
+  → Insights                        ── equivalences · top-3 swaps · budget · Gemini coach
 ```
+
+### The carbon lookup hierarchy (the core design decision)
+
+For each parsed item the engine falls through four tiers and **tags every line with its source + a confidence level** — so the user always knows how real the number is:
+
+1. **Open Food Facts** — real per-product carbon footprint + Eco-Score (A–E), matched by name/barcode. *Best, real number. Free, ODbL.*
+2. **Climatiq** — activity/category emission factors (DEFRA/EPA sourced) for items not in OFF.
+3. **Static factor table** — bundled DEFRA / Agribalyse / EPA values. Always available, fully offline.
+4. **Gemini estimate** — last resort only, so the app is never blank. Clearly flagged as estimated, *never* the primary source.
+
+> Deterministic sources (1–3) are preferred for trustworthy, reproducible numbers. Gemini is the fallback, not the engine.
+
+## Tech stack
+
+| Layer | Choice |
+|-------|--------|
+| **Frontend** | Next.js 15 (App Router) · TypeScript · Tailwind · shadcn/ui · Recharts |
+| **Backend** | Python · FastAPI · Uvicorn |
+| **AI** | Gemini `2.5-flash` on **Vertex AI** (vision parsing, coach, tier-4 estimates) |
+| **Data** | Open Food Facts · Climatiq · DEFRA/Agribalyse static factors |
+| **Persistence** | In-memory by default (zero setup) · optional Firestore |
+| **Deploy** | Two Cloud Run services (Dockerfiles included) |
+
+Built with **Google Antigravity** (prompt-driven development), per the hackathon requirement.
 
 ## Quick start (Windows PowerShell)
 
-**One command** (opens backend + frontend in two windows, installs on first run):
+**One command** — opens backend + frontend in two windows, installs deps on first run:
+
 ```powershell
 ./run-local.ps1
 ```
+
 Then open **http://localhost:3000**. Stop with `./stop-local.ps1`.
 
 <details><summary>Manual start</summary>
@@ -52,13 +96,13 @@ npm run dev
 </details>
 
 ### Prerequisites
-- Python 3.10+, Node 20+, gcloud CLI.
-- Vertex AI access: `gcloud auth application-default login` (project `gen-ai-academy-491804`,
-  region `us-central1`). Default model: **`gemini-2.5-flash`**.
-- The backend seeds 2 demo receipts on first run, so the dashboard is alive immediately —
-  no upload required to demo.
+- **Python 3.10+**, **Node 20+**, **gcloud CLI**.
+- Vertex AI access: `gcloud auth application-default login`
+  (project `gen-ai-academy-491804`, region `us-central1`). Default model: **`gemini-2.5-flash`**.
+- The backend **seeds 2 demo receipts** on first run, so the dashboard is alive immediately — no upload required to demo.
 
 ## Tests
+
 ```powershell
 # Backend unit tests (offline; Gemini + HTTP mocked)
 backend/venv/Scripts/python.exe -m pytest backend/tests
@@ -66,35 +110,38 @@ backend/venv/Scripts/python.exe -m pytest backend/tests
 # Contract tests against a running backend (start it first)
 backend/venv/Scripts/python.exe -m pytest tests/contract_test.py
 ```
-Sample receipt images: `fixtures/*.png` (regenerate with
-`python fixtures/generate_receipts.py`).
 
-## 60-second demo script
-1. **Landing** (`/`) — one line: receipts → real carbon footprint, understand/track/reduce.
-2. **Dashboard** (`/dashboard`) — a seeded receipt is already shown.
-3. **Hero number + equivalences** — "42.3 kg CO₂e ≈ X km driven / Y phone charges / Z trees."
-4. **Breakdown + item table** — point out the **Eco-Score** and the **source/confidence**
-   badge on each line (real number, not a black box).
-5. **Upload** a `fixtures/*.png` receipt → watch Gemini parse it live into a new footprint.
-6. **Carbon budget** — progress bar vs the monthly target.
-7. **Top-3 swaps** — "replace X with Y, save Z kg."
-8. **Coach** — ask *"Why is my footprint high this week?"* → grounded, personalized answer.
+Sample receipt images live in `fixtures/*.png` (regenerate with `python fixtures/generate_receipts.py`).
 
 ## Deploy (Cloud Run)
+
 ```powershell
-gcloud run deploy carbon-receipt-api --source backend --region us-central1 --allow-unauthenticated
+gcloud run deploy carbon-receipt-api --source backend --region us-central1 `
+  --allow-unauthenticated --set-env-vars GEMINI_MODEL=gemini-2.5-flash
 gcloud run deploy carbon-receipt-web --source frontend --region us-central1 --allow-unauthenticated
 # then set the web service's NEXT_PUBLIC_API_BASE_URL to the api service URL
 ```
 
 ## Project layout
+
 ```
 backend/    FastAPI app — carbon engine, Gemini, routers, store, tests
-frontend/   Next.js app — landing + dashboard, shadcn/ui, recharts
+frontend/   Next.js app — landing + dashboard, shadcn/ui, Recharts
 fixtures/   Sample Indian grocery receipt images + parsed line items
 tests/      Cross-service API contract tests
-docs/       API_CONTRACT.md (the shared interface spec)
+docs/       API_CONTRACT.md (shared interface spec) + screenshots
 ```
 
 ## Data sources
+
 Open Food Facts (ODbL) · Climatiq · DEFRA / Agribalyse static factors · Gemini (Vertex AI).
+
+## License
+
+MIT — see below. Emission data retains its respective source licenses (Open Food Facts is ODbL).
+
+---
+
+<div align="center">
+<sub>Built for PromptWars Virtual 2026 · <a href="https://github.com/Dawn-Of-Justice/CarbonRecipt">Dawn-Of-Justice/CarbonRecipt</a></sub>
+</div>

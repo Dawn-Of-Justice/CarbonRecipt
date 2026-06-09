@@ -16,6 +16,7 @@ clients lazily.
 Quantity handling: the static table is "kg CO2e per kg of product". We convert
 each line's quantity+unit into an approximate mass in kg and multiply.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,14 +24,13 @@ import os
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from app.carbon.equivalence import equivalence_for
 from app.models import (
-    Equivalence,
     FootprintResponse,
     ItemFootprint,
     LineItem,
     Swap,
 )
-from app.carbon.equivalence import equivalence_for
 
 # --- static factor table (tier 3) -----------------------------------------
 _DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "emission_factors.json"
@@ -208,26 +208,61 @@ def category_breakdown(items: List[ItemFootprint]) -> Dict[str, float]:
 # per-kg factor used to estimate savings. Highest-savings swaps surface first.
 _SWAP_RULES = [
     # (keyword, suggestion, replacement_per_kg, rationale)
-    ("beef", "chicken or lentils", BY_KEYWORD["chicken"],
-     "Beef is the single highest-carbon food; chicken or dal cut it dramatically."),
-    ("mutton", "chicken", BY_KEYWORD["chicken"],
-     "Red meat (mutton/goat) is far more carbon-intensive than poultry."),
-    ("lamb", "chicken", BY_KEYWORD["chicken"],
-     "Lamb is very carbon-intensive; poultry is a lighter protein."),
-    ("goat", "chicken", BY_KEYWORD["chicken"],
-     "Goat meat is carbon-intensive; chicken is a lighter protein."),
-    ("pork", "chicken or lentils", BY_KEYWORD["chicken"],
-     "Swapping pork for chicken or pulses lowers the footprint."),
-    ("prawn", "fish or paneer", BY_KEYWORD["fish"],
-     "Farmed prawns are emissions-heavy; fish or paneer is lighter."),
-    ("cheese", "paneer", BY_KEYWORD["paneer"],
-     "Paneer has a much lower footprint than aged cheese."),
-    ("butter", "ghee in moderation or oil", BY_KEYWORD["oil"],
-     "Dairy fats are carbon-heavy; use plant oil where you can."),
-    ("coffee", "tea", BY_KEYWORD["tea"],
-     "Coffee has a high footprint per kg; tea is lighter."),
-    ("chocolate", "local fruit", BY_KEYWORD["fruit"],
-     "Cocoa is land-intensive; fruit is a low-carbon sweet alternative."),
+    (
+        "beef",
+        "chicken or lentils",
+        BY_KEYWORD["chicken"],
+        "Beef is the single highest-carbon food; chicken or dal cut it dramatically.",
+    ),
+    (
+        "mutton",
+        "chicken",
+        BY_KEYWORD["chicken"],
+        "Red meat (mutton/goat) is far more carbon-intensive than poultry.",
+    ),
+    (
+        "lamb",
+        "chicken",
+        BY_KEYWORD["chicken"],
+        "Lamb is very carbon-intensive; poultry is a lighter protein.",
+    ),
+    (
+        "goat",
+        "chicken",
+        BY_KEYWORD["chicken"],
+        "Goat meat is carbon-intensive; chicken is a lighter protein.",
+    ),
+    (
+        "pork",
+        "chicken or lentils",
+        BY_KEYWORD["chicken"],
+        "Swapping pork for chicken or pulses lowers the footprint.",
+    ),
+    (
+        "prawn",
+        "fish or paneer",
+        BY_KEYWORD["fish"],
+        "Farmed prawns are emissions-heavy; fish or paneer is lighter.",
+    ),
+    (
+        "cheese",
+        "paneer",
+        BY_KEYWORD["paneer"],
+        "Paneer has a much lower footprint than aged cheese.",
+    ),
+    (
+        "butter",
+        "ghee in moderation or oil",
+        BY_KEYWORD["oil"],
+        "Dairy fats are carbon-heavy; use plant oil where you can.",
+    ),
+    ("coffee", "tea", BY_KEYWORD["tea"], "Coffee has a high footprint per kg; tea is lighter."),
+    (
+        "chocolate",
+        "local fruit",
+        BY_KEYWORD["fruit"],
+        "Cocoa is land-intensive; fruit is a low-carbon sweet alternative.",
+    ),
 ]
 
 
@@ -284,7 +319,7 @@ def build_default_engine() -> "CarbonEngine":
     Imports are local so importing the engine for unit tests doesn't pull in
     httpx/genai. Tiers self-disable when their config is absent.
     """
-    from app.carbon.sources import off_lookup, climatiq_lookup
+    from app.carbon.sources import climatiq_lookup, off_lookup
     from app.gemini.client import gemini_estimate
 
     climatiq = climatiq_lookup if os.getenv("CLIMATIQ_API_KEY") else None

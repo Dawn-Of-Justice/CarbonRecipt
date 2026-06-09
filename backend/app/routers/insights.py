@@ -1,4 +1,5 @@
 """Insights endpoints: trends, baseline, and the Gemini coach."""
+
 from __future__ import annotations
 
 from typing import List

@@ -37,6 +37,7 @@ export function Hero() {
                   strokeWidth="3"
                   fill="none"
                   strokeLinecap="round"
+                  className="[stroke-dasharray:240] animate-draw-underline motion-reduce:animate-none motion-reduce:[stroke-dasharray:none]"
                 />
               </svg>
             </span>
@@ -51,9 +52,10 @@ export function Hero() {
             <strong className="font-semibold text-foreground">reduce</strong> it.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="group">
               <Link href="/dashboard">
-                Try it now <ArrowRight className="h-4 w-4" />
+                Try it now{" "}
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 ease-out-quint group-hover:translate-x-1" />
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
@@ -98,8 +100,12 @@ function HeroReceipt() {
             <SourceBadge source="off" confidence="high" />
           </div>
           <div className="mt-5 space-y-3">
-            {rows.map((r) => (
-              <div key={r.name} className="flex items-center gap-3 text-sm">
+            {rows.map((r, i) => (
+              <div
+                key={r.name}
+                className="flex items-center gap-3 text-sm animate-slide-up-fade"
+                style={{ animationDelay: `${320 + i * 80}ms` }}
+              >
                 <EcoScoreBadge score={r.eco} size="sm" />
                 <span className="flex-1 truncate text-foreground">{r.name}</span>
                 <span className="text-xs text-muted-foreground">{r.qty}</span>

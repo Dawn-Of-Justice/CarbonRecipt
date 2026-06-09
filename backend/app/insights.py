@@ -3,6 +3,7 @@
 All functions take stored Receipts and derive the contract shapes. Pure-ish
 (only depend on the receipts passed in), so easy to test.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -17,7 +18,7 @@ AVG_INDIAN_HOUSEHOLD_KG_PER_MONTH = 90.0
 BASELINE_LABEL = "Average Indian household basket"
 
 # Budget status thresholds.
-WARN_THRESHOLD = 80.0   # percentUsed >= 80 -> warning
+WARN_THRESHOLD = 80.0  # percentUsed >= 80 -> warning
 OVER_THRESHOLD = 100.0  # percentUsed > 100 -> over
 
 
@@ -48,10 +49,7 @@ def trends(receipts: List[Receipt], range_: str = "weekly") -> List[TrendPoint]:
 def baseline(receipts: List[Receipt]) -> Baseline:
     """Compare the user's avg monthly footprint to the household baseline."""
     monthly = trends(receipts, "monthly")
-    if monthly:
-        user_avg = round(sum(p.co2eKg for p in monthly) / len(monthly), 3)
-    else:
-        user_avg = 0.0
+    user_avg = round(sum(p.co2eKg for p in monthly) / len(monthly), 3) if monthly else 0.0
     base = AVG_INDIAN_HOUSEHOLD_KG_PER_MONTH
     delta = round(((user_avg - base) / base) * 100, 1) if base else 0.0
     return Baseline(

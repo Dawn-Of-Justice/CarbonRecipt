@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Reveal } from "@/components/motion/reveal";
 import { SOURCE_STYLE } from "@/lib/design";
 import { SOURCE_LABELS, type Source } from "@/lib/types";
 
@@ -48,14 +49,15 @@ export function HowItWorks() {
         />
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {steps.map((s, i) => (
-            <div
+            <Reveal
               key={s.title}
-              className="relative rounded-2xl border border-border bg-card p-6 shadow-sm"
+              delay={i * 90}
+              className="group relative rounded-2xl border border-border bg-card p-6 shadow-sm transition-[transform,box-shadow] duration-300 ease-out-quint hover:-translate-y-1 hover:shadow-md"
             >
               <span className="absolute right-5 top-5 font-mono text-sm text-muted-foreground/60">
                 0{i + 1}
               </span>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-leaf-100 text-leaf-700">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-leaf-100 text-leaf-700 transition-transform duration-300 ease-out-quint group-hover:scale-110 group-hover:-rotate-3">
                 <s.icon className="h-6 w-6" />
               </div>
               <p className="mt-5 text-xs font-semibold uppercase tracking-wider text-primary">
@@ -67,7 +69,7 @@ export function HowItWorks() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {s.body}
               </p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -146,15 +148,17 @@ export function Features() {
           sub="Designed around the three things that matter: understand it, track it, reduce it."
         />
         <div className="mt-12 grid auto-rows-[1fr] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <article
+          {FEATURES.map((f, i) => (
+            <Reveal
               key={f.title}
-              className={`group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+              as="article"
+              delay={(i % 3) * 80}
+              className={`group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-[transform,box-shadow] duration-300 ease-out-quint hover:-translate-y-1 hover:shadow-lg ${
                 f.span ? "sm:col-span-2 lg:col-span-2" : ""
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-primary">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-secondary text-primary transition-transform duration-300 ease-out-quint group-hover:scale-110">
                   <f.icon className="h-5 w-5" />
                 </div>
                 <span
@@ -169,7 +173,7 @@ export function Features() {
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                 {f.body}
               </p>
-            </article>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -197,9 +201,11 @@ export function Sources() {
           {tiers.map((t, i) => {
             const s = SOURCE_STYLE[t.source];
             return (
-              <div
+              <Reveal
                 key={t.source}
-                className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+                delay={i * 70}
+                y={12}
+                className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors duration-300 hover:border-primary/30"
               >
                 <span className="font-mono text-sm text-muted-foreground/70">
                   {i + 1}
@@ -214,7 +220,7 @@ export function Sources() {
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${s.bg} ${s.text}`}>
                   {t.conf} confidence
                 </span>
-              </div>
+              </Reveal>
             );
           })}
         </div>
@@ -228,12 +234,20 @@ export function CTA() {
   return (
     <section className="py-20">
       <div className="container">
-        <div className="relative overflow-hidden rounded-[2rem] bg-primary px-8 py-16 text-center shadow-xl">
+        <Reveal
+          y={24}
+          className="group relative overflow-hidden rounded-[2rem] bg-primary px-8 py-16 text-center shadow-xl"
+        >
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 grain opacity-30"
           />
-          <Brain className="mx-auto h-10 w-10 text-leaf-200" />
+          {/* light sweep on entrance */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 -skew-x-12 bg-white/10 blur-md animate-sheen motion-reduce:hidden"
+          />
+          <Brain className="mx-auto h-10 w-10 text-leaf-200 animate-float motion-reduce:animate-none" />
           <h2 className="mt-5 font-display text-3xl font-bold text-primary-foreground sm:text-4xl">
             See your next receipt&apos;s footprint
           </h2>
@@ -246,7 +260,7 @@ export function CTA() {
               <Link href="/dashboard">Open the app</Link>
             </Button>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -275,7 +289,7 @@ function SectionHeading({
   sub: string;
 }) {
   return (
-    <div className="mx-auto max-w-2xl text-center">
+    <Reveal className="mx-auto max-w-2xl text-center">
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
         {eyebrow}
       </p>
@@ -283,6 +297,6 @@ function SectionHeading({
         {title}
       </h2>
       <p className="mt-3 text-muted-foreground">{sub}</p>
-    </div>
+    </Reveal>
   );
 }
