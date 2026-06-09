@@ -46,6 +46,26 @@ def test_seeded_receipts_present(client):
     assert "seed-bigbasket-01" in ids
 
 
+def test_new_user_gets_own_seeded_history(client):
+    # A fresh anonymous userId lands on a live dashboard (lazily seeded).
+    r = client.get("/receipts?userId=anon-newcomer")
+    assert r.status_code == 200
+    assert len(r.json()) >= 2
+
+
+def test_per_user_history_is_isolated(client):
+    a = client.get("/receipts?userId=user-a").json()
+    b = client.get("/receipts?userId=user-b").json()
+    assert len(a) >= 2 and len(b) >= 2
+
+    # Deleting a receipt for user-a must not touch user-b's history.
+    client.delete("/receipts/seed-bigbasket-01?userId=user-a")
+    a_ids = {x["id"] for x in client.get("/receipts?userId=user-a").json()}
+    b_ids = {x["id"] for x in client.get("/receipts?userId=user-b").json()}
+    assert "seed-bigbasket-01" not in a_ids
+    assert "seed-bigbasket-01" in b_ids
+
+
 def test_get_single_and_404(client):
     ok = client.get("/receipts/seed-bigbasket-01")
     assert ok.status_code == 200

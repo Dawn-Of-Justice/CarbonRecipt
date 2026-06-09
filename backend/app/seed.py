@@ -8,6 +8,7 @@ fixed ids, fixed dates, and footprints computed offline via the static tier
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
@@ -15,6 +16,10 @@ from app.carbon.engine import CarbonEngine
 from app.models import LineItem
 from app.pipeline import build_receipt
 from app.store import DEFAULT_USER, Repository
+
+# Serializes the check-then-seed so concurrent first-load requests for the same
+# new user (the dashboard fires several at once) seed exactly once.
+_seed_lock = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -151,22 +156,33 @@ def _seed_engine() -> CarbonEngine:
 
 
 def seed_if_empty(repository: Repository, user_id: str = DEFAULT_USER) -> int:
-    """Seed demo receipts if the store has none. Returns count seeded."""
+    """Seed demo receipts for a user if their store is empty. Returns count seeded.
+
+    Idempotent and race-safe: each new (anonymous) user gets the demo baskets on
+    their first visit so the dashboard is never empty, while existing histories
+    are left untouched.
+    """
+    # Fast path: already seeded -> no lock contention on the common case.
     if not repository.is_empty(user_id):
         return 0
 
-    engine = _seed_engine()
-    now = datetime.now(timezone.utc)
-    seeded = 0
-    for basket in _SEED_BASKETS:
-        created = (now - timedelta(days=basket.days_ago)).isoformat()
-        receipt = build_receipt(
-            engine,
-            basket.items,
-            merchant=basket.merchant,
-            created_at=created,
-            receipt_id=basket.id,
-        )
-        repository.add_receipt(receipt, user_id)
-        seeded += 1
-    return seeded
+    with _seed_lock:
+        # Re-check under the lock (another request may have just seeded).
+        if not repository.is_empty(user_id):
+            return 0
+
+        engine = _seed_engine()
+        now = datetime.now(timezone.utc)
+        seeded = 0
+        for basket in _SEED_BASKETS:
+            created = (now - timedelta(days=basket.days_ago)).isoformat()
+            receipt = build_receipt(
+                engine,
+                basket.items,
+                merchant=basket.merchant,
+                created_at=created,
+                receipt_id=basket.id,
+            )
+            repository.add_receipt(receipt, user_id)
+            seeded += 1
+        return seeded

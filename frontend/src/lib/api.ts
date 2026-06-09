@@ -9,6 +9,7 @@ import type {
   Receipt,
   TrendPoint,
 } from "./types";
+import { getUserId } from "./user-id";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
@@ -32,8 +33,12 @@ async function request<T>(
     () => controller.abort(),
     init?.timeoutMs ?? 60_000
   );
+  // Scope every call to this browser's anonymous identity so history is
+  // per-user. Endpoints that don't use userId simply ignore the param.
+  const url = new URL(`${API_BASE}${path}`);
+  url.searchParams.set("userId", getUserId());
   try {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const res = await fetch(url, {
       ...init,
       signal: controller.signal,
       headers: {

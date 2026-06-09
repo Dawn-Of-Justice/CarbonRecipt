@@ -14,7 +14,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
 from app.carbon.engine import CarbonEngine
-from app.deps import get_engine, get_repo
+from app.deps import get_engine, get_seeded_repo
 from app.gemini.client import parse_receipt
 from app.models import ParseOnlyResponse, Receipt
 from app.pipeline import build_receipt
@@ -34,7 +34,7 @@ async def create_receipt(
     merchant: Optional[str] = Form(None),
     userId: str = Query(DEFAULT_USER),
     engine: CarbonEngine = Depends(get_engine),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> Receipt:
     """Full pipeline: vision parse the receipt image, score it, store it."""
     image_bytes = await read_image_upload(file)
@@ -52,7 +52,7 @@ async def create_receipt(
 @router.get("", response_model=List[Receipt])
 def list_receipts(
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> List[Receipt]:
     return repo.list_receipts(userId)
 
@@ -61,7 +61,7 @@ def list_receipts(
 def get_receipt(
     receipt_id: str,
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> Receipt:
     receipt = repo.get_receipt(receipt_id, userId)
     if receipt is None:
@@ -73,7 +73,7 @@ def get_receipt(
 def delete_receipt(
     receipt_id: str,
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> dict:
     if not repo.delete_receipt(receipt_id, userId):
         raise HTTPException(status_code=404, detail="Receipt not found")

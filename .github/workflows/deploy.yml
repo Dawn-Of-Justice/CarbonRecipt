@@ -45,7 +45,7 @@ jobs:
             --source backend \
             --region "$REGION" \
             --allow-unauthenticated \
-            --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION,GEMINI_MODEL=gemini-2.5-flash,USE_FIRESTORE=false"
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION,GEMINI_MODEL=gemini-2.5-flash,USE_FIRESTORE=true"
 
       - name: Read API URL
         id: api

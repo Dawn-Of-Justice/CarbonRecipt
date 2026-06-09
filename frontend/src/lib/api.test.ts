@@ -50,6 +50,31 @@ describe("api client error handling", () => {
     );
     await expect(api.listReceipts()).resolves.toEqual([{ id: "r1" }]);
   });
+
+  it("attaches a userId query param to every request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await api.listReceipts();
+    const calledWith = String(fetchMock.mock.calls[0][0]);
+    expect(calledWith).toContain("userId=");
+  });
+
+  it("preserves existing query params when adding userId", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => [],
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await api.trends("monthly");
+    const calledWith = String(fetchMock.mock.calls[0][0]);
+    expect(calledWith).toContain("range=monthly");
+    expect(calledWith).toContain("userId=");
+  });
 });
 
 describe("equivalence constants stay in sync with the backend contract", () => {

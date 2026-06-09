@@ -6,6 +6,32 @@ Two Cloud Run services:
 - `carbon-receipt-api` — FastAPI backend (built from `backend/` via Cloud Build).
 - `carbon-receipt-web` — Next.js frontend (Docker image with the API URL baked in).
 
+## Persistence (history) — required for deploy
+
+Locally the app uses an in-memory store (`USE_FIRESTORE=false`, zero setup). That
+**won't persist on Cloud Run** — instances scale to zero and don't share memory, so
+history would reset. In production the API runs with **`USE_FIRESTORE=true`** and stores
+receipts/budgets in **Firestore**. Each browser sends an anonymous `userId`, so every
+visitor gets their own private, persistent history (no login).
+
+One-time Firestore setup:
+
+```bash
+gcloud services enable firestore.googleapis.com --project promptwars-495213
+# Create the default Firestore database in Native mode.
+gcloud firestore databases create --location=nam5 --project promptwars-495213
+
+# The Cloud Run runtime service account needs Datastore + Vertex AI access.
+PROJECT=promptwars-495213
+PROJECT_NUM=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
+RUNTIME_SA="$PROJECT_NUM-compute@developer.gserviceaccount.com"
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member="serviceAccount:$RUNTIME_SA" --role=roles/datastore.user
+gcloud projects add-iam-policy-binding $PROJECT \
+  --member="serviceAccount:$RUNTIME_SA" --role=roles/aiplatform.user
+```
+
+
 There are two ways to deploy: the **GitHub Actions workflow** (keyless, repeatable)
 or **manual gcloud** (fastest for a one-off demo).
 
@@ -19,10 +45,10 @@ Authenticate locally, then deploy. The frontend needs the API URL at *build* tim
 ```bash
 gcloud config set project promptwars-495213
 
-# 1) Backend
+# 1) Backend  (USE_FIRESTORE=true so history persists; see Persistence setup above)
 gcloud run deploy carbon-receipt-api \
   --source backend --region us-central1 --allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT=promptwars-495213,GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_MODEL=gemini-2.5-flash,USE_FIRESTORE=false
+  --set-env-vars GOOGLE_CLOUD_PROJECT=promptwars-495213,GOOGLE_CLOUD_LOCATION=us-central1,GEMINI_MODEL=gemini-2.5-flash,USE_FIRESTORE=true
 
 API_URL=$(gcloud run services describe carbon-receipt-api --region us-central1 --format='value(status.url)')
 

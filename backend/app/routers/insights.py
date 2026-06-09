@@ -7,7 +7,7 @@ from typing import List
 from fastapi import APIRouter, Depends, Query
 
 from app import insights as insights_mod
-from app.deps import get_repo
+from app.deps import get_seeded_repo
 from app.gemini.client import coach_answer
 from app.models import Baseline, CoachRequest, CoachResponse, TrendPoint
 from app.store import DEFAULT_USER, Repository
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/insights")
 def trends(
     range: str = Query("weekly", pattern="^(weekly|monthly)$"),
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> List[TrendPoint]:
     return insights_mod.trends(repo.list_receipts(userId), range)
 
@@ -27,7 +27,7 @@ def trends(
 @router.get("/baseline", response_model=Baseline)
 def baseline(
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> Baseline:
     return insights_mod.baseline(repo.list_receipts(userId))
 
@@ -56,7 +56,7 @@ coach_router = APIRouter()
 def coach(
     body: CoachRequest,
     userId: str = Query(DEFAULT_USER),
-    repo: Repository = Depends(get_repo),
+    repo: Repository = Depends(get_seeded_repo),
 ) -> CoachResponse:
     """Gemini answers a question grounded in the user's stored receipts."""
     receipts = repo.list_receipts(userId)
