@@ -20,13 +20,13 @@ export function formatNumber(n: number, digits = 0): string {
 }
 
 export function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
+  // new Date(badInput) yields an Invalid Date object (it does not throw), so
+  // guard explicitly rather than relying on try/catch.
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }

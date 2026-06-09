@@ -1,0 +1,65 @@
+# Pre-commit hooks for Carbon Receipt.
+#   Install:  pip install pre-commit && pre-commit install
+#   Run all:  pre-commit run --all-files
+#
+# Hygiene + secret-scanning hooks run on every file. Backend Python is linted
+# and formatted with ruff (isolated, managed env) and type-checked with mypy;
+# the frontend with ESLint. The mypy + eslint hooks reuse the project's own
+# toolchains so they match exactly what CI enforces.
+minimum_pre_commit_version: "3.5.0"
+default_language_version:
+  python: python3
+
+repos:
+  # --- general hygiene + secret scanning -----------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=2048"]
+      - id: detect-private-key  # block committing private keys / GCP creds
+
+  # --- backend: ruff lint + format (managed, isolated env) -----------------
+  # ruff auto-discovers backend/pyproject.toml by walking up from each file.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.2
+    hooks:
+      - id: ruff
+        name: ruff (lint, backend)
+        args: ["--fix"]
+        files: ^backend/.*\.py$
+      - id: ruff-format
+        name: ruff-format (backend)
+        files: ^backend/.*\.py$
+
+  # --- project-toolchain hooks (match CI exactly) --------------------------
+  - repo: local
+    hooks:
+      - id: mypy-backend
+        name: mypy (backend)
+        # Use the project's venv if present (Windows or POSIX), else fall back to PATH.
+        entry: >-
+          bash -c 'cd backend &&
+          PY=$([ -x venv/Scripts/python.exe ] && echo venv/Scripts/python.exe ||
+          ([ -x venv/bin/python ] && echo venv/bin/python || echo python)) &&
+          "$PY" -m mypy app'
+        language: system
+        files: ^backend/app/.*\.py$
+        pass_filenames: false
+        require_serial: true
+
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: bash -c 'cd frontend && npx --no-install eslint .'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx)$
+        pass_filenames: false
+        require_serial: true

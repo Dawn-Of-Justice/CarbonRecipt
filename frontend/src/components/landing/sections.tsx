@@ -109,7 +109,6 @@ const FEATURES: {
     title: "Carbon budget",
     body: "Set a monthly CO₂e target and watch a live progress bar shift from ok → warning → over.",
     tag: "track",
-    span: true,
   },
   {
     icon: Gauge,

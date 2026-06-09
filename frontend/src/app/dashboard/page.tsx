@@ -522,7 +522,7 @@ function BudgetCard({
           >
             <div
               className={cn(
-                "relative h-full overflow-hidden rounded-full transition-[width] duration-[900ms] ease-out-quint motion-reduce:transition-none",
+                "relative h-full overflow-hidden rounded-full transition-[width] [transition-duration:900ms] ease-out-quint motion-reduce:transition-none",
                 barColor
               )}
               style={{ width: `${fill}%` }}

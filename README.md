@@ -6,6 +6,7 @@
 
 Built for the **PromptWars Virtual** hackathon · *"Help individuals understand, track, and reduce their carbon footprint through simple actions and personalized insights."*
 
+[![CI](https://github.com/Dawn-Of-Justice/CarbonRecipt/actions/workflows/ci.yml/badge.svg)](https://github.com/Dawn-Of-Justice/CarbonRecipt/actions/workflows/ci.yml)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Gemini](https://img.shields.io/badge/Gemini-Vertex%20AI-4285F4?logo=google&logoColor=white)](https://cloud.google.com/vertex-ai)
@@ -98,16 +99,29 @@ npm run dev
 ### Prerequisites
 - **Python 3.10+**, **Node 20+**, **gcloud CLI**.
 - Vertex AI access: `gcloud auth application-default login`
-  (project `gen-ai-academy-491804`, region `us-central1`). Default model: **`gemini-2.5-flash`**.
+  (project `promptwars-495213`, region `us-central1`). Default model: **`gemini-2.5-flash`**.
 - The backend **seeds 2 demo receipts** on first run, so the dashboard is alive immediately — no upload required to demo.
 
-## Tests
+## Quality & tests
+
+CI runs on every push/PR (`.github/workflows/ci.yml`): backend **ruff + mypy + pytest**,
+frontend **eslint + tsc + vitest + build**. Install the matching pre-commit hooks with
+`pip install pre-commit && pre-commit install`.
 
 ```powershell
-# Backend unit tests (offline; Gemini + HTTP mocked)
-backend/venv/Scripts/python.exe -m pytest backend/tests
+# Backend: lint, type-check, test (offline; Gemini + HTTP mocked)
+cd backend
+./venv/Scripts/python.exe -m ruff check app tests
+./venv/Scripts/python.exe -m mypy app
+./venv/Scripts/python.exe -m pytest -q --cov=app
 
-# Contract tests against a running backend (start it first)
+# Frontend: lint, type-check, unit tests
+cd frontend
+npm run lint
+npm run typecheck
+npm run test
+
+# Cross-service contract tests against a running backend (start it first)
 backend/venv/Scripts/python.exe -m pytest tests/contract_test.py
 ```
 
@@ -115,11 +129,15 @@ Sample receipt images live in `fixtures/*.png` (regenerate with `python fixtures
 
 ## Deploy (Cloud Run)
 
+Target GCP project **`promptwars-495213`**, region `us-central1`. Deploy either with the
+manual `gcloud` commands or the keyless GitHub Actions workflow — full steps (including the
+Workload Identity Federation setup) are in **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ```powershell
+# Manual quick path (deploy API first; its URL is baked into the web build)
 gcloud run deploy carbon-receipt-api --source backend --region us-central1 `
-  --allow-unauthenticated --set-env-vars GEMINI_MODEL=gemini-2.5-flash
-gcloud run deploy carbon-receipt-web --source frontend --region us-central1 --allow-unauthenticated
-# then set the web service's NEXT_PUBLIC_API_BASE_URL to the api service URL
+  --allow-unauthenticated --set-env-vars GOOGLE_CLOUD_PROJECT=promptwars-495213,GEMINI_MODEL=gemini-2.5-flash
+# then build/deploy the web image with NEXT_PUBLIC_API_BASE_URL set to the API URL (see docs/DEPLOY.md)
 ```
 
 ## Project layout

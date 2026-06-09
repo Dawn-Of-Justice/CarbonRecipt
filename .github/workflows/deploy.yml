@@ -1,0 +1,95 @@
+name: Deploy to Cloud Run
+
+# Manual deploy to GCP project promptwars-495213.
+# Requires one-time setup (see docs/DEPLOY.md): a Workload Identity Federation
+# provider, a deployer service account, an Artifact Registry repo, and the two
+# repository secrets referenced below.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for keyless Workload Identity Federation
+
+env:
+  PROJECT_ID: promptwars-495213
+  REGION: us-central1
+  AR_REPO: carbon-receipt
+  API_SERVICE: carbon-receipt-api
+  WEB_SERVICE: carbon-receipt-web
+
+jobs:
+  deploy:
+    name: Build & deploy both services
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure project
+        run: gcloud config set project "$PROJECT_ID"
+
+      # --- backend (built from source via Cloud Build) ---------------------
+      - name: Deploy API (backend)
+        run: |
+          gcloud run deploy "$API_SERVICE" \
+            --source backend \
+            --region "$REGION" \
+            --allow-unauthenticated \
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$REGION,GEMINI_MODEL=gemini-2.5-flash,USE_FIRESTORE=false"
+
+      - name: Read API URL
+        id: api
+        run: |
+          URL=$(gcloud run services describe "$API_SERVICE" --region "$REGION" --format='value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      # --- frontend (API URL must be baked in at build time) ---------------
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+
+      - name: Build & push web image
+        id: web_image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/web:${GITHUB_SHA::12}"
+          docker build \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${{ steps.api.outputs.url }}" \
+            -t "$IMAGE" frontend
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy Web (frontend)
+        run: |
+          gcloud run deploy "$WEB_SERVICE" \
+            --image "${{ steps.web_image.outputs.image }}" \
+            --region "$REGION" \
+            --allow-unauthenticated
+
+      - name: Read Web URL
+        id: web
+        run: |
+          URL=$(gcloud run services describe "$WEB_SERVICE" --region "$REGION" --format='value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      # --- wire the web origin into the API's CORS allowlist ---------------
+      - name: Allow web origin in API CORS
+        run: |
+          gcloud run services update "$API_SERVICE" --region "$REGION" \
+            --update-env-vars "FRONTEND_ORIGIN=${{ steps.web.outputs.url }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed 🚀"
+            echo "- **API:** ${{ steps.api.outputs.url }}"
+            echo "- **Web:** ${{ steps.web.outputs.url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
