@@ -1,0 +1,19 @@
+# Builds the Next.js image with the live API URL baked in (NEXT_PUBLIC_* is
+# inlined at build time), then pushes it to Artifact Registry.
+#   gcloud builds submit frontend --config frontend/cloudbuild.yaml \
+#     --substitutions _API_URL=<api-url>,_IMAGE=<image>
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg
+      - NEXT_PUBLIC_API_BASE_URL=${_API_URL}
+      - -t
+      - ${_IMAGE}
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args: [push, "${_IMAGE}"]
+images:
+  - ${_IMAGE}
+options:
+  logging: CLOUD_LOGGING_ONLY

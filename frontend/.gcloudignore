@@ -1,0 +1,6 @@
+# Keep Cloud Build uploads small; deps are installed inside the Dockerfile.
+node_modules
+.next
+.git
+.env.local
+npm-debug.log*
