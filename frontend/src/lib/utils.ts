@@ -30,3 +30,10 @@ export function formatDate(iso: string): string {
     year: "numeric",
   });
 }
+
+/** Short day-and-month form ("9 Jun") used in receipt headers and history. */
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}

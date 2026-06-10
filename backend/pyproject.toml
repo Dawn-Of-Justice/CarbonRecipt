@@ -21,8 +21,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101"]               # asserts are the point of tests
-"app/gemini/client.py" = ["E501"]   # long lines are LLM prompt text, not code
+"tests/**" = ["S101"]   # asserts are the point of tests
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI's dependency-injection idiom puts Depends()/Query()/File()/Form() in

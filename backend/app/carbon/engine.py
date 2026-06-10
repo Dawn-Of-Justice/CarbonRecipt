@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, TypeVar
 
 from app.carbon.equivalence import equivalence_for
 from app.models import (
@@ -105,6 +105,22 @@ ClimatiqLookup = Callable[[LineItem], Optional[ItemFootprint]]
 # gemini_estimate(item) -> Optional[float]  (kg CO2e for the whole line)
 GeminiEstimate = Callable[[LineItem], Optional[float]]
 
+_T = TypeVar("_T")
+
+
+def _try_tier(lookup: Optional[Callable[[LineItem], Optional[_T]]], item: LineItem) -> Optional[_T]:
+    """Run one optional tier, treating any error as a miss.
+
+    A flaky network source or LLM must never break the pipeline — on failure
+    the next tier simply takes over.
+    """
+    if lookup is None:
+        return None
+    try:
+        return lookup(item)
+    except Exception:
+        return None
+
 
 class CarbonEngine:
     """Resolve CO2e per line item via the tiered hierarchy.
@@ -125,23 +141,11 @@ class CarbonEngine:
 
     def resolve_item(self, item: LineItem) -> ItemFootprint:
         """Resolve a single line item, falling through tiers 1->4."""
-        # Tier 1: Open Food Facts
-        if self.off_lookup is not None:
-            try:
-                fp = self.off_lookup(item)
-                if fp is not None:
-                    return fp
-            except Exception:
-                pass  # fall through on any error — never break the pipeline
-
-        # Tier 2: Climatiq (only if wired up; skips silently otherwise)
-        if self.climatiq_lookup is not None:
-            try:
-                fp = self.climatiq_lookup(item)
-                if fp is not None:
-                    return fp
-            except Exception:
-                pass
+        # Tiers 1-2: real product data (OFF), then category factors (Climatiq).
+        for lookup in (self.off_lookup, self.climatiq_lookup):
+            fp = _try_tier(lookup, item)
+            if fp is not None:
+                return fp
 
         # Tier 3: static table — always available, deterministic.
         # We try this before Gemini so the LLM is truly the last resort.
@@ -151,20 +155,16 @@ class CarbonEngine:
             pass
 
         # Tier 4: Gemini estimate — final fallback so the app never shows blank.
-        if self.gemini_estimate is not None:
-            try:
-                est = self.gemini_estimate(item)
-                if est is not None:
-                    return ItemFootprint(
-                        **item.model_dump(),
-                        co2eKg=round(float(est), 3),
-                        source="gemini",
-                        confidence="low",
-                        ecoScore=None,
-                        note="estimated by Gemini",
-                    )
-            except Exception:
-                pass
+        estimate = _try_tier(self.gemini_estimate, item)
+        if estimate is not None:
+            return ItemFootprint(
+                **item.model_dump(),
+                co2eKg=round(float(estimate), 3),
+                source="gemini",
+                confidence="low",
+                ecoScore=None,
+                note="estimated by Gemini",
+            )
 
         # Absolute safety net (should be unreachable given tier 3).
         return ItemFootprint(

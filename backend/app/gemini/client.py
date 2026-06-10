@@ -44,7 +44,8 @@ Return ONLY a JSON array (no prose, no markdown) where each element is:
 {
   "name": string,        // normalized product name, e.g. "Amul Toned Milk"
   "rawText": string,     // the original text on that receipt line
-  "category": string,    // EXACTLY one of: meat, dairy, produce, grains, packaged, beverages, household, personal_care, other
+  "category": string,    // EXACTLY one of: meat, dairy, produce, grains,
+                         // packaged, beverages, household, personal_care, other
   "quantity": number,    // numeric quantity, default 1
   "unit": string         // one of: kg, g, l, ml, pc, pack
 }

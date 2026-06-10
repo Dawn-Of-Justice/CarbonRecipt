@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cn, formatDate, formatKg, formatNumber } from "./utils";
+import { cn, formatDate, formatKg, formatNumber, formatShortDate } from "./utils";
 
 describe("cn", () => {
   it("merges class names and dedupes conflicting Tailwind classes", () => {
@@ -49,5 +49,18 @@ describe("formatDate", () => {
 
   it("returns the input unchanged when unparseable", () => {
     expect(formatDate("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatShortDate", () => {
+  it("renders a short day-and-month date without the year", () => {
+    const out = formatShortDate("2026-06-09T12:00:00Z");
+    expect(out).toMatch(/9/);
+    expect(out).toMatch(/Jun/);
+    expect(out).not.toMatch(/2026/);
+  });
+
+  it("returns the input unchanged when unparseable", () => {
+    expect(formatShortDate("garbage")).toBe("garbage");
   });
 });
