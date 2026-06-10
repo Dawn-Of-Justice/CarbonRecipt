@@ -19,6 +19,9 @@ sys.path.insert(0, str(BACKEND_DIR))
 # Force offline-safe config for the whole test session.
 os.environ.setdefault("USE_FIRESTORE", "false")
 os.environ.pop("CLIMATIQ_API_KEY", None)
+# Disable rate limiting for the suite (test_ratelimit.py builds its own app
+# with the middleware attached at known limits).
+os.environ["RATE_LIMIT_PER_MINUTE"] = "0"
 
 
 @pytest.fixture

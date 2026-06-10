@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Loader2, MessageSquare, Send, X } from "lucide-react";
+import Markdown, { type Components } from "react-markdown";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,23 @@ interface CoachMessage {
 }
 
 const SUGGESTED_QUESTION = "Why is my footprint high this week?";
+
+/**
+ * Chat-bubble-sized markdown: Gemini answers use bold and short bullet
+ * lists, so render those properly instead of showing raw `**` markers.
+ * Anything outside this whitelist is unwrapped to plain text.
+ */
+const MARKDOWN_ELEMENTS = ["p", "strong", "em", "ul", "ol", "li", "code", "br"];
+
+const markdownComponents: Components = {
+  p: (props) => <p className="mb-1.5 last:mb-0" {...props} />,
+  ul: (props) => <ul className="mb-1.5 list-disc space-y-0.5 pl-4 last:mb-0" {...props} />,
+  ol: (props) => <ol className="mb-1.5 list-decimal space-y-0.5 pl-4 last:mb-0" {...props} />,
+  strong: (props) => <strong className="font-semibold" {...props} />,
+  code: (props) => (
+    <code className="rounded bg-black/10 px-1 font-mono text-[0.85em]" {...props} />
+  ),
+};
 
 /**
  * Floating Gemini carbon coach. A launcher bubble sits at the bottom-right;
@@ -123,7 +141,17 @@ export function CoachWidget() {
                 : "mr-auto bg-secondary text-foreground"
             )}
           >
-            {m.text}
+            {m.role === "coach" ? (
+              <Markdown
+                allowedElements={MARKDOWN_ELEMENTS}
+                unwrapDisallowed
+                components={markdownComponents}
+              >
+                {m.text}
+              </Markdown>
+            ) : (
+              m.text
+            )}
           </div>
         ))}
         {busy && (

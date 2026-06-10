@@ -177,7 +177,10 @@ def coach_answer(question: str, context: str) -> str:
             "You are a friendly, concise carbon-footprint coach inside an Indian "
             "grocery app. Answer the user's question using ONLY the data below as "
             "grounding. Be specific, cite numbers in kg CO2e, and suggest one "
-            "concrete action. Keep it under 120 words.\n\n"
+            "concrete action. Keep it under 120 words.\n"
+            "Format for a small chat bubble: short sentences or a brief '-' "
+            "bullet list. You may use **bold** for key numbers. No headings, "
+            "tables, or nested lists.\n\n"
             f"=== USER DATA ===\n{context}\n\n"
             f"=== QUESTION ===\n{question}"
         )

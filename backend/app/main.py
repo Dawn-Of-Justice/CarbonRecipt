@@ -18,6 +18,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Load .env early so all modules see env vars (Gemini project, USE_FIRESTORE, ...).
 load_dotenv()
 
+from app.ratelimit import configure_rate_limiting  # noqa: E402
 from app.routers import barcode, budget, footprint, receipts  # noqa: E402
 from app.routers.insights import coach_router  # noqa: E402
 from app.routers.insights import router as insights_router  # noqa: E402
@@ -69,6 +70,10 @@ app = FastAPI(
 )
 
 app.add_middleware(SecurityHeadersMiddleware)
+
+# Per-IP rate limiting (the public URL must not be able to run up a Gemini
+# bill). Added before CORS so 429 responses still carry CORS headers.
+configure_rate_limiting(app)
 
 # CORS: explicit origin allowlist (never "*" while credentials are allowed).
 app.add_middleware(
