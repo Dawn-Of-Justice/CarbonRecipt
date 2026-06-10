@@ -158,9 +158,8 @@ def _seed_engine() -> CarbonEngine:
 def seed_if_empty(repository: Repository, user_id: str = DEFAULT_USER) -> int:
     """Seed demo receipts for a user if their store is empty. Returns count seeded.
 
-    Idempotent and race-safe: each new (anonymous) user gets the demo baskets on
-    their first visit so the dashboard is never empty, while existing histories
-    are left untouched.
+    Idempotent and race-safe. Only called for the shared demo identity (see
+    `deps.get_seeded_repo`); real anonymous users start with an empty history.
     """
     # Fast path: already seeded -> no lock contention on the common case.
     if not repository.is_empty(user_id):

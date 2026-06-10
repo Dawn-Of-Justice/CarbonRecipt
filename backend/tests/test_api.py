@@ -46,24 +46,37 @@ def test_seeded_receipts_present(client):
     assert "seed-bigbasket-01" in ids
 
 
-def test_new_user_gets_own_seeded_history(client):
-    # A fresh anonymous userId lands on a live dashboard (lazily seeded).
+def test_new_user_starts_with_empty_history(client):
+    # A fresh anonymous userId sees the first-run upload state, not demo data.
     r = client.get("/receipts?userId=anon-newcomer")
     assert r.status_code == 200
-    assert len(r.json()) >= 2
+    assert r.json() == []
 
 
-def test_per_user_history_is_isolated(client):
-    a = client.get("/receipts?userId=user-a").json()
-    b = client.get("/receipts?userId=user-b").json()
-    assert len(a) >= 2 and len(b) >= 2
+def test_per_user_history_is_isolated(client, monkeypatch):
+    from app import models
+    from app.routers import receipts as receipts_router
 
-    # Deleting a receipt for user-a must not touch user-b's history.
-    client.delete("/receipts/seed-bigbasket-01?userId=user-a")
+    monkeypatch.setattr(
+        receipts_router,
+        "parse_receipt",
+        lambda b, m="image/jpeg": [
+            models.LineItem(name="Chicken", category="meat", quantity=1, unit="kg")
+        ],
+    )
+    files = {"file": ("r.png", io.BytesIO(PNG_MAGIC + b"\x00" * 32), "image/png")}
+    created = client.post("/receipts?userId=user-a", files=files).json()
+
+    # user-a sees their upload; user-b's history stays empty.
     a_ids = {x["id"] for x in client.get("/receipts?userId=user-a").json()}
-    b_ids = {x["id"] for x in client.get("/receipts?userId=user-b").json()}
-    assert "seed-bigbasket-01" not in a_ids
-    assert "seed-bigbasket-01" in b_ids
+    assert created["id"] in a_ids
+    assert client.get("/receipts?userId=user-b").json() == []
+
+    # Deleting it for user-a works and never touches the demo user's seeds.
+    client.delete(f"/receipts/{created['id']}?userId=user-a")
+    assert client.get("/receipts?userId=user-a").json() == []
+    demo_ids = {x["id"] for x in client.get("/receipts").json()}
+    assert "seed-bigbasket-01" in demo_ids
 
 
 def test_get_single_and_404(client):

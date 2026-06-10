@@ -26,6 +26,7 @@ from typing import Callable, Dict, List, Optional, TypeVar
 
 from app.carbon.equivalence import equivalence_for
 from app.models import (
+    EcoScore,
     FootprintResponse,
     ItemFootprint,
     LineItem,
@@ -83,6 +84,23 @@ def static_factor(name: str, category: str) -> float:
     return BY_CATEGORY_DEFAULT.get(category, BY_CATEGORY_DEFAULT["other"])
 
 
+# --- derived Eco-Score ------------------------------------------------------
+# Open Food Facts (tier 1) returns a real Green-Score; the static and Gemini
+# tiers don't. Grade those by carbon intensity (kg CO2e per kg of product) so
+# the Eco column is never blank. Bands approximate Agribalyse cut-offs:
+# produce ~0.5 -> A, milk ~1.4 -> B, chicken/rice ~4-6 -> C, cheese ~10 -> D,
+# beef/mutton 20+ -> E.
+_ECO_BANDS: list[tuple[float, EcoScore]] = [(1.0, "A"), (3.0, "B"), (7.0, "C"), (15.0, "D")]
+
+
+def eco_score_for_intensity(per_kg: float) -> EcoScore:
+    """A-E grade for a carbon intensity expressed in kg CO2e per kg of product."""
+    for limit, grade in _ECO_BANDS:
+        if per_kg < limit:
+            return grade
+    return "E"
+
+
 def _static_footprint(item: LineItem) -> ItemFootprint:
     per_kg = static_factor(item.name, item.category)
     mass = quantity_to_kg(item.quantity, item.unit)
@@ -91,7 +109,7 @@ def _static_footprint(item: LineItem) -> ItemFootprint:
         co2eKg=round(per_kg * mass, 3),
         source="static",
         confidence="medium",
-        ecoScore=None,
+        ecoScore=eco_score_for_intensity(per_kg),
         note="static factor x est. mass",
     )
 
@@ -157,12 +175,14 @@ class CarbonEngine:
         # Tier 4: Gemini estimate — final fallback so the app never shows blank.
         estimate = _try_tier(self.gemini_estimate, item)
         if estimate is not None:
+            mass = quantity_to_kg(item.quantity, item.unit)
+            intensity = float(estimate) / mass if mass > 0 else float(estimate)
             return ItemFootprint(
                 **item.model_dump(),
                 co2eKg=round(float(estimate), 3),
                 source="gemini",
                 confidence="low",
-                ecoScore=None,
+                ecoScore=eco_score_for_intensity(intensity),
                 note="estimated by Gemini",
             )
 

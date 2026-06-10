@@ -2,7 +2,7 @@
 
 import { BaselineCard } from "@/components/dashboard/baseline-card";
 import { BudgetCard } from "@/components/dashboard/budget-card";
-import { CoachCard } from "@/components/dashboard/coach-card";
+import { CoachWidget } from "@/components/dashboard/coach-widget";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { HistoryCard } from "@/components/dashboard/history-card";
 import { ReceiptDetail } from "@/components/dashboard/receipt-detail";
@@ -63,14 +63,15 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Side column — track + reduce + coach */}
+            {/* Side column — track + reduce */}
             <div className="space-y-6">
               {budget && (
                 <div className="animate-fade-up [animation-delay:60ms]">
                   <BudgetCard budget={budget} onSet={setBudget} />
                 </div>
               )}
-              {baseline && (
+              {/* A baseline comparison is meaningless with no receipts yet. */}
+              {baseline && receipts.length > 0 && (
                 <div className="animate-fade-up [animation-delay:120ms]">
                   <BaselineCard baseline={baseline} />
                 </div>
@@ -79,9 +80,6 @@ export default function DashboardPage() {
                 <TrendsCard trends={trends} />
               </div>
               <div className="animate-fade-up [animation-delay:240ms]">
-                <CoachCard />
-              </div>
-              <div className="animate-fade-up [animation-delay:300ms]">
                 <HistoryCard
                   receipts={receipts}
                   selectedId={selected?.id ?? null}
@@ -92,6 +90,9 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Coach floats above the page so answers never crowd the side column. */}
+      <CoachWidget />
     </div>
   );
 }

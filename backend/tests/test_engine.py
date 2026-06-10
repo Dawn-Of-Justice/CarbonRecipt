@@ -10,6 +10,7 @@ import pytest
 from app.carbon.engine import (
     CarbonEngine,
     category_breakdown,
+    eco_score_for_intensity,
     quantity_to_kg,
     static_factor,
     top_swaps,
@@ -53,6 +54,29 @@ def test_static_factor_category_default_when_no_keyword():
 
 def test_static_factor_unknown_category_falls_to_other():
     assert static_factor("Mystery Item", "not_a_category") == 2.0
+
+
+# --- derived Eco-Score -------------------------------------------------------
+@pytest.mark.parametrize(
+    "intensity,grade",
+    [
+        (0.5, "A"),  # produce
+        (1.4, "B"),  # milk
+        (6.0, "C"),  # chicken
+        (10.0, "D"),  # cheese
+        (60.0, "E"),  # beef
+    ],
+)
+def test_eco_score_for_intensity_bands(intensity, grade):
+    assert eco_score_for_intensity(intensity) == grade
+
+
+def test_static_tier_always_grades_eco_score():
+    # The Eco column must never be blank: static results carry a derived grade.
+    engine = CarbonEngine()
+    fp = engine.resolve_item(_line(name="Fresh Beef Mince", category="meat"))
+    assert fp.source == "static"
+    assert fp.ecoScore == "E"
 
 
 # --- tier fallthrough ------------------------------------------------------

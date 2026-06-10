@@ -29,10 +29,12 @@ def get_seeded_repo(
     userId: str = Query(DEFAULT_USER),
     repo: Repository = Depends(get_repo),
 ) -> Repository:
-    """The repository, with demo receipts seeded for this user on first access.
+    """The repository, with demo receipts seeded for the shared demo identity only.
 
-    Every browser gets an anonymous userId, so new visitors land on a live
-    dashboard instead of an empty one. Seeding is idempotent and race-safe.
+    Real visitors (anonymous browser UUIDs) start with an empty history and see
+    the first-run upload state. Only the fallback `demo-user` identity — used by
+    the API docs and the live-preview demo — gets the sample receipts.
     """
-    seed_if_empty(repo, userId)
+    if userId == DEFAULT_USER:
+        seed_if_empty(repo, userId)
     return repo
