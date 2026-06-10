@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface CoachMessage {
+  id: number;
   role: "you" | "coach";
   text: string;
 }
@@ -45,11 +46,29 @@ export function CoachWidget() {
   const [thread, setThread] = useState<CoachMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const threadEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const hasOpenedRef = useRef(false);
+  const nextIdRef = useRef(0);
+
+  function pushMessage(role: CoachMessage["role"], text: string) {
+    setThread((t) => [...t, { id: nextIdRef.current++, role, text }]);
+  }
 
   // Keep the newest message in view as the thread grows.
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [thread, busy]);
+
+  // Move focus into the chat on open and back to the launcher on close.
+  useEffect(() => {
+    if (open) {
+      hasOpenedRef.current = true;
+      inputRef.current?.focus();
+    } else if (hasOpenedRef.current) {
+      launcherRef.current?.focus();
+    }
+  }, [open]);
 
   // Close on Escape.
   useEffect(() => {
@@ -64,17 +83,14 @@ export function CoachWidget() {
   async function ask(text?: string) {
     const q = (text ?? question).trim();
     if (!q || busy) return;
-    setThread((t) => [...t, { role: "you", text: q }]);
+    pushMessage("you", q);
     setQuestion("");
     setBusy(true);
     try {
       const { answer } = await api.coach(q);
-      setThread((t) => [...t, { role: "coach", text: answer }]);
+      pushMessage("coach", answer);
     } catch {
-      setThread((t) => [
-        ...t,
-        { role: "coach", text: "I couldn't reach the coach just now." },
-      ]);
+      pushMessage("coach", "I couldn't reach the coach just now.");
     } finally {
       setBusy(false);
     }
@@ -83,6 +99,7 @@ export function CoachWidget() {
   if (!open) {
     return (
       <Button
+        ref={launcherRef}
         onClick={() => setOpen(true)}
         aria-label="Open the carbon coach"
         className="fixed bottom-5 right-5 z-40 h-14 w-14 rounded-full shadow-lg transition-transform duration-300 ease-out-quint hover:-translate-y-1 hover:shadow-xl"
@@ -95,6 +112,7 @@ export function CoachWidget() {
   return (
     <div
       role="dialog"
+      aria-modal="true"
       aria-label="Carbon coach chat"
       className="fixed inset-x-0 bottom-0 z-40 flex max-h-[85dvh] flex-col rounded-t-2xl border border-border bg-card shadow-2xl animate-slide-up-fade sm:inset-x-auto sm:bottom-5 sm:right-5 sm:max-h-[70vh] sm:w-[380px] sm:rounded-2xl"
     >
@@ -131,9 +149,9 @@ export function CoachWidget() {
             Try: “{SUGGESTED_QUESTION}”
           </button>
         )}
-        {thread.map((m, i) => (
+        {thread.map((m) => (
           <div
-            key={i}
+            key={m.id}
             className={cn(
               "max-w-[85%] animate-slide-up-fade rounded-xl px-3 py-2 text-sm leading-relaxed",
               m.role === "you"
@@ -165,6 +183,7 @@ export function CoachWidget() {
 
       <div className="flex items-end gap-2 border-t border-border px-4 py-3">
         <Textarea
+          ref={inputRef}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask the coach…"

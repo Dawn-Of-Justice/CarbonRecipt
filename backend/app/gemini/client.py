@@ -66,6 +66,22 @@ def _client():
     return genai.Client(vertexai=True, project=PROJECT, location=LOCATION)
 
 
+def _generate_text(contents: list, *, temperature: float, json_output: bool = False) -> str:
+    """One Gemini call returning raw text ("" when the model returns none).
+
+    Shared by all three public functions so the client/config wiring lives in
+    exactly one place. Raises on SDK/network errors; callers handle fallback.
+    """
+    from google.genai import types
+
+    config = types.GenerateContentConfig(
+        temperature=temperature,
+        response_mime_type="application/json" if json_output else None,
+    )
+    resp = _client().models.generate_content(model=MODEL, contents=contents, config=config)
+    return resp.text or ""
+
+
 def _extract_json(text: str):
     """Robustly pull a JSON value out of a model response (handles code fences)."""
     if not text:
@@ -88,14 +104,18 @@ def _extract_json(text: str):
 
 
 def _coerce_line_items(raw) -> List[LineItem]:
-    """Validate/normalize the model's JSON into LineItem objects."""
+    """Validate/normalize the model's JSON into LineItem objects.
+
+    Values are clamped to the LineItem field bounds (lengths, quantity range)
+    so one oversized model answer can never invalidate the whole parse.
+    """
     items: List[LineItem] = []
     if not isinstance(raw, list):
         return items
     for entry in raw:
         if not isinstance(entry, dict):
             continue
-        name = str(entry.get("name") or "").strip()
+        name = str(entry.get("name") or "").strip()[:200]
         if not name:
             continue
         category = str(entry.get("category") or "other").strip().lower()
@@ -105,11 +125,12 @@ def _coerce_line_items(raw) -> List[LineItem]:
             quantity = float(entry.get("quantity") or 1)
         except (TypeError, ValueError):
             quantity = 1.0
-        unit = str(entry.get("unit") or "pc").strip().lower() or "pc"
+        quantity = min(max(quantity, 0.0), 10_000.0)
+        unit = (str(entry.get("unit") or "pc").strip().lower() or "pc")[:20]
         items.append(
             LineItem(
                 name=name,
-                rawText=str(entry.get("rawText") or name),
+                rawText=str(entry.get("rawText") or name)[:300],
                 category=category,
                 quantity=quantity,
                 unit=unit,
@@ -123,19 +144,9 @@ def parse_receipt(image_bytes: bytes, mime_type: str = "image/jpeg") -> List[Lin
     try:
         from google.genai import types
 
-        client = _client()
-        resp = client.models.generate_content(
-            model=MODEL,
-            contents=[
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                PARSE_PROMPT,
-            ],
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                response_mime_type="application/json",
-            ),
-        )
-        return _coerce_line_items(_extract_json(resp.text))
+        image = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+        text = _generate_text([image, PARSE_PROMPT], temperature=0.1, json_output=True)
+        return _coerce_line_items(_extract_json(text))
     except Exception:
         # Never break the upload flow; an empty parse is handled by the router.
         return []
@@ -143,53 +154,35 @@ def parse_receipt(image_bytes: bytes, mime_type: str = "image/jpeg") -> List[Lin
 
 def gemini_estimate(item: LineItem) -> Optional[float]:
     """Tier-4 last resort: ask Gemini for kg CO2e for this whole line. None on fail."""
+    prompt = (
+        "Estimate the total cradle-to-retail carbon footprint in kilograms of "
+        "CO2e for this grocery purchase line. Respond with ONLY a number "
+        "(kg CO2e), no units, no text.\n"
+        f"Item: {item.name}\nQuantity: {item.quantity} {item.unit}\n"
+        f"Category: {item.category}"
+    )
     try:
-        from google.genai import types
-
-        client = _client()
-        prompt = (
-            "Estimate the total cradle-to-retail carbon footprint in kilograms of "
-            "CO2e for this grocery purchase line. Respond with ONLY a number "
-            "(kg CO2e), no units, no text.\n"
-            f"Item: {item.name}\nQuantity: {item.quantity} {item.unit}\n"
-            f"Category: {item.category}"
-        )
-        resp = client.models.generate_content(
-            model=MODEL,
-            contents=[prompt],
-            config=types.GenerateContentConfig(temperature=0.0),
-        )
-        match = re.search(r"[-+]?\d*\.?\d+", resp.text or "")
-        if match:
-            return float(match.group(0))
+        match = re.search(r"[-+]?\d*\.?\d+", _generate_text([prompt], temperature=0.0))
+        return float(match.group(0)) if match else None
     except Exception:
         return None
-    return None
 
 
 def coach_answer(question: str, context: str) -> str:
     """Conversational coach grounded in the user's own receipt history."""
+    prompt = (
+        "You are a friendly, concise carbon-footprint coach inside an Indian "
+        "grocery app. Answer the user's question using ONLY the data below as "
+        "grounding. Be specific, cite numbers in kg CO2e, and suggest one "
+        "concrete action. Keep it under 120 words.\n"
+        "Format for a small chat bubble: short sentences or a brief '-' "
+        "bullet list. You may use **bold** for key numbers. No headings, "
+        "tables, or nested lists.\n\n"
+        f"=== USER DATA ===\n{context}\n\n"
+        f"=== QUESTION ===\n{question}"
+    )
     try:
-        from google.genai import types
-
-        client = _client()
-        prompt = (
-            "You are a friendly, concise carbon-footprint coach inside an Indian "
-            "grocery app. Answer the user's question using ONLY the data below as "
-            "grounding. Be specific, cite numbers in kg CO2e, and suggest one "
-            "concrete action. Keep it under 120 words.\n"
-            "Format for a small chat bubble: short sentences or a brief '-' "
-            "bullet list. You may use **bold** for key numbers. No headings, "
-            "tables, or nested lists.\n\n"
-            f"=== USER DATA ===\n{context}\n\n"
-            f"=== QUESTION ===\n{question}"
-        )
-        resp = client.models.generate_content(
-            model=MODEL,
-            contents=[prompt],
-            config=types.GenerateContentConfig(temperature=0.4),
-        )
-        return (resp.text or "").strip() or _fallback_answer()
+        return _generate_text([prompt], temperature=0.4).strip() or _fallback_answer()
     except Exception:
         return _fallback_answer()
 

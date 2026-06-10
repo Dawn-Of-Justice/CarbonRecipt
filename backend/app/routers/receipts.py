@@ -11,14 +11,14 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.carbon.engine import CarbonEngine
-from app.deps import get_engine, get_seeded_repo
+from app.deps import UserIdQuery, get_engine, get_seeded_repo
 from app.gemini.client import parse_receipt
 from app.models import ParseOnlyResponse, Receipt
 from app.pipeline import build_receipt
-from app.store import DEFAULT_USER, Repository
+from app.store import Repository
 from app.uploads import read_image_upload
 
 router = APIRouter(prefix="/receipts")
@@ -31,8 +31,8 @@ def _guess_mime(upload: UploadFile) -> str:
 @router.post("", response_model=Receipt)
 async def create_receipt(
     file: UploadFile = File(...),
-    merchant: Optional[str] = Form(None),
-    userId: str = Query(DEFAULT_USER),
+    merchant: Optional[str] = Form(None, max_length=120),
+    userId: str = UserIdQuery,
     engine: CarbonEngine = Depends(get_engine),
     repo: Repository = Depends(get_seeded_repo),
 ) -> Receipt:
@@ -51,7 +51,7 @@ async def create_receipt(
 
 @router.get("", response_model=List[Receipt])
 def list_receipts(
-    userId: str = Query(DEFAULT_USER),
+    userId: str = UserIdQuery,
     repo: Repository = Depends(get_seeded_repo),
 ) -> List[Receipt]:
     return repo.list_receipts(userId)
@@ -60,7 +60,7 @@ def list_receipts(
 @router.get("/{receipt_id}", response_model=Receipt)
 def get_receipt(
     receipt_id: str,
-    userId: str = Query(DEFAULT_USER),
+    userId: str = UserIdQuery,
     repo: Repository = Depends(get_seeded_repo),
 ) -> Receipt:
     receipt = repo.get_receipt(receipt_id, userId)
@@ -72,7 +72,7 @@ def get_receipt(
 @router.delete("/{receipt_id}")
 def delete_receipt(
     receipt_id: str,
-    userId: str = Query(DEFAULT_USER),
+    userId: str = UserIdQuery,
     repo: Repository = Depends(get_seeded_repo),
 ) -> dict:
     if not repo.delete_receipt(receipt_id, userId):

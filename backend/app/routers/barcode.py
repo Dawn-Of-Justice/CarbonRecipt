@@ -7,7 +7,7 @@ unreachable, so the demo never errors out.
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Path
 
 from app.carbon.engine import _static_footprint
 from app.carbon.sources import off_barcode_lookup
@@ -17,7 +17,9 @@ router = APIRouter()
 
 
 @router.get("/barcode/{code}", response_model=ItemFootprint)
-def barcode(code: str) -> ItemFootprint:
+def barcode(code: str = Path(pattern=r"^\d{1,14}$")) -> ItemFootprint:
+    """Barcodes are digits only (EAN/UPC); the pattern also keeps the value
+    safe to interpolate into the Open Food Facts URL."""
     fp = off_barcode_lookup(code)
     if fp is not None:
         return fp

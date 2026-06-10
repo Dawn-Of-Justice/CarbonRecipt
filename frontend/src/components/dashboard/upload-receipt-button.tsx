@@ -1,18 +1,26 @@
 "use client";
 
-import { useRef } from "react";
-import { Camera, Loader2, Upload } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, FolderOpen, Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/** Phone-sized screens get the camera/files menu; desktop opens the picker. */
+function isSmallScreen(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 639px)").matches
+  );
+}
+
 /**
- * Upload actions paired with hidden file inputs. Every place a receipt can be
- * added (header, empty state) shares this so the input wiring — accept filter,
- * value reset, accessible labels — lives in one place.
+ * Upload action paired with hidden file inputs, shared by the header and the
+ * empty state so the input wiring lives in one place.
  *
- * On phones a second camera button opens the rear camera directly
- * (`capture="environment"`); on desktop only the file picker is shown.
+ * On desktop the button opens the file picker directly. On phones it opens a
+ * small menu with two options — take a photo (rear camera via
+ * `capture="environment"`) or choose from the file manager.
  */
 export function UploadReceiptButton({
   uploading,
@@ -29,6 +37,25 @@ export function UploadReceiptButton({
 }) {
   const pickerRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the mobile menu on outside tap or Escape.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -36,14 +63,19 @@ export function UploadReceiptButton({
     e.target.value = "";
   }
 
+  function openSource(ref: React.RefObject<HTMLInputElement | null>) {
+    setMenuOpen(false);
+    ref.current?.click();
+  }
+
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div ref={containerRef} className={cn("relative inline-block", className)}>
       <input
         ref={pickerRef}
         type="file"
         accept="image/*"
         className="hidden"
-        aria-label="Upload a receipt image"
+        aria-label="Choose a receipt image from your files"
         onChange={handleFile}
       />
       <input
@@ -56,9 +88,13 @@ export function UploadReceiptButton({
         onChange={handleFile}
       />
       <Button
-        onClick={() => pickerRef.current?.click()}
+        onClick={() =>
+          isSmallScreen() ? setMenuOpen((o) => !o) : openSource(pickerRef)
+        }
         disabled={uploading}
         className="group"
+        aria-haspopup="menu"
+        aria-expanded={menuOpen}
       >
         {uploading ? (
           <>
@@ -71,16 +107,28 @@ export function UploadReceiptButton({
           </>
         )}
       </Button>
-      <Button
-        variant="outline"
-        size="icon"
-        className="sm:hidden"
-        onClick={() => cameraRef.current?.click()}
-        disabled={uploading}
-        aria-label="Take a photo of a receipt"
-      >
-        <Camera className="h-4 w-4" />
-      </Button>
+      {menuOpen && (
+        <div
+          role="menu"
+          aria-label="Add a receipt"
+          className="absolute right-0 top-full z-50 mt-2 w-56 animate-slide-up-fade rounded-xl border border-border bg-card p-1 shadow-lg"
+        >
+          <button
+            role="menuitem"
+            onClick={() => openSource(cameraRef)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-secondary"
+          >
+            <Camera className="h-4 w-4 text-primary" /> Take a photo
+          </button>
+          <button
+            role="menuitem"
+            onClick={() => openSource(pickerRef)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-secondary"
+          >
+            <FolderOpen className="h-4 w-4 text-primary" /> Choose from files
+          </button>
+        </div>
+      )}
     </div>
   );
 }

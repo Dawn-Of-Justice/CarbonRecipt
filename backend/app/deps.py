@@ -15,6 +15,12 @@ from app.carbon.engine import CarbonEngine, build_default_engine
 from app.seed import seed_if_empty
 from app.store import DEFAULT_USER, Repository, repo
 
+# Anonymous user ids are browser-minted UUIDs (or the shared demo id). Every
+# endpoint validates the shape here — defined once — before the value is used
+# as a Firestore document path.
+USER_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+UserIdQuery = Query(DEFAULT_USER, pattern=USER_ID_PATTERN)
+
 
 @lru_cache(maxsize=1)
 def get_engine() -> CarbonEngine:
@@ -26,7 +32,7 @@ def get_repo() -> Repository:
 
 
 def get_seeded_repo(
-    userId: str = Query(DEFAULT_USER),
+    userId: str = UserIdQuery,
     repo: Repository = Depends(get_repo),
 ) -> Repository:
     """The repository, with demo receipts seeded for the shared demo identity only.

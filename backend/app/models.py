@@ -29,13 +29,17 @@ Category = Literal[
 
 
 class LineItem(BaseModel):
-    """Raw extraction from a receipt line."""
+    """Raw extraction from a receipt line.
 
-    name: str
-    rawText: str = ""
+    Field bounds guard against malformed or adversarial payloads reaching the
+    engine and the store (the Gemini parser clamps to these same limits).
+    """
+
+    name: str = Field(min_length=1, max_length=200)
+    rawText: str = Field(default="", max_length=300)
     category: Category = "other"
-    quantity: float = 1
-    unit: str = "pc"
+    quantity: float = Field(default=1, ge=0, le=10_000)
+    unit: str = Field(default="pc", max_length=20)
 
 
 class ItemFootprint(LineItem):
@@ -94,7 +98,7 @@ class Baseline(BaseModel):
 
 # --- request bodies ---
 class FootprintRequest(BaseModel):
-    items: List[LineItem]
+    items: List[LineItem] = Field(max_length=200)
 
 
 class FootprintResponse(BaseModel):
@@ -111,7 +115,8 @@ class ParseOnlyResponse(BaseModel):
 
 
 class CoachRequest(BaseModel):
-    question: str
+    # Bounded so a single request can't feed an arbitrarily large prompt to Gemini.
+    question: str = Field(min_length=1, max_length=500)
 
 
 class CoachResponse(BaseModel):
@@ -119,4 +124,4 @@ class CoachResponse(BaseModel):
 
 
 class BudgetUpdate(BaseModel):
-    monthlyTargetKg: float
+    monthlyTargetKg: float = Field(gt=0, le=1_000_000)
